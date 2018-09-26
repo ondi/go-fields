@@ -80,12 +80,8 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 	return
 }
 
-func Split(in string) (res []string) {
+func Split(in string, s * Split_t) (res []string) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
-	s := &Split_t {
-		Sep: map[rune]int{',': 0},
-		Ignore: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0},
-	}
 	scanner.Split(s.Split)
 	for scanner.Scan() {
 		res = append(res, scanner.Text())
@@ -93,10 +89,26 @@ func Split(in string) (res []string) {
 	return
 }
 
+func SplitCSV(in string) []string {
+	s := &Split_t {
+		Sep: map[rune]int{',': 0},
+		Ignore: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0},
+	}
+	return Split(in, s)
+}
+
+func SplitTSV(in string) []string {
+	s := &Split_t {
+		Sep: map[rune]int{'\t': 0},
+		Ignore: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0},
+	}
+	return Split(in, s)
+}
+
 type Strings_t []string
 
 func (self * Strings_t) Set(value string) (err error) {
-	for _, v := range Split(value) {
+	for _, v := range SplitCSV(value) {
 		*self = append(*self, v)
 	}
 	return
