@@ -8,7 +8,7 @@ import "strings"
 import "unicode"
 
 type Fields_t struct {
-	Sep rune
+	Sep map[rune]int
 	last_quote rune
 }
 
@@ -23,7 +23,8 @@ func (self * Fields_t) test(c rune) bool {
 		self.last_quote = c
 		return true		// false to keep quotes
 	default:
-		return unicode.IsSpace(c) || c == self.Sep
+		_, ok := self.Sep[c]
+		return ok
 	}
 }
 
@@ -32,11 +33,11 @@ func (self * Fields_t) Fields(in string) []string {
 }
 
 func TSV(in string) []string {
-	return (&Fields_t{}).Fields(in)
+	return (&Fields_t{Sep: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0}}).Fields(in)
 }
 
 func CSV(in string) []string {
-	return (&Fields_t{Sep: ','}).Fields(in)
+	return (&Fields_t{Sep: map[rune]int{',': 0, ' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0}}).Fields(in)
 }
 
 type Strings_t []string
