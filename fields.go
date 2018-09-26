@@ -23,7 +23,7 @@ func (self * Fields_t) test(c rune) bool {
 		self.last_quote = c
 		return true		// false to keep quotes
 	default:
-		return c == self.Sep || unicode.IsSpace(c)
+		return unicode.IsSpace(c) || c == self.Sep
 	}
 }
 
@@ -31,14 +31,18 @@ func (self * Fields_t) Fields(in string) []string {
 	return strings.FieldsFunc(in, self.test)
 }
 
-func Fields(in string) []string {
+func TSV(in string) []string {
+	return (&Fields_t{}).Fields(in)
+}
+
+func CSV(in string) []string {
 	return (&Fields_t{Sep: ','}).Fields(in)
 }
 
 type Strings_t []string
 
 func (self * Strings_t) Set(value string) (err error) {
-	for _, v := range Fields(value) {
+	for _, v := range CSV(value) {
 		*self = append(*self, v)
 	}
 	return
