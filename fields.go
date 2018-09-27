@@ -1,5 +1,5 @@
 //
-// strings.Fields
+// Split quoted comma separated list
 //
 
 package fields
@@ -44,7 +44,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 	return
 }
 
-func Split(in string, s * Split_t) (res []string) {
+func split(in string, s * Split_t) (res []string) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
 	scanner.Split(s.Split)
 	for scanner.Scan() {
@@ -58,7 +58,7 @@ func SplitCSV(in string) []string {
 		Sep: map[rune]int{',': 1},
 		Ignore: map[rune]int{' ': 1, '\t': 1, '\v': 1, '\r': 1, '\n': 1, '\f': 1},
 	}
-	return Split(in, s)
+	return split(in, s)
 }
 
 func SplitTSV(in string) []string {
@@ -66,7 +66,7 @@ func SplitTSV(in string) []string {
 		Sep: map[rune]int{'\t': 1},
 		Ignore: map[rune]int{' ': 1, '\t': 1, '\v': 1, '\r': 1, '\n': 1, '\f': 1},
 	}
-	return Split(in, s)
+	return split(in, s)
 }
 
 type Strings_t []string
