@@ -9,74 +9,38 @@ import "strings"
 import "unicode"
 import "unicode/utf8"
 
-// import "github.com/ondi/go-log"
-
-type fields_t struct {
-	Sep map[rune]int
-	last_quote rune
-}
-
-func (self * fields_t) test(c rune) bool {
-	switch {
-	case self.last_quote == c:
-		self.last_quote = 0
-		return true		// false to keep quotes
-	case self.last_quote != 0:
-		return false
-	case unicode.In(c, unicode.Quotation_Mark):
-		self.last_quote = c
-		return true		// false to keep quotes
-	default:
-		_, ok := self.Sep[c]
-		return ok
-	}
-}
-
-func (self * fields_t) Fields(in string) []string {
-	return strings.FieldsFunc(in, self.test)
-}
-
-func FieldsTSV(in string) []string {
-	return (&fields_t{Sep: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0}}).Fields(in)
-}
-
-func FieldsCSV(in string) []string {
-	return (&fields_t{Sep: map[rune]int{',': 0, ' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0}}).Fields(in)
-}
-
 type Split_t struct {
 	Sep map[rune]int
 	Ignore map[rune]int
+	last_quote rune
+	last_rune rune
+	last_size int
 }
 
 func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	var last_rune rune
-	var last_size int
-	var last_quote rune
-	
 	for {
-		if last_rune, last_size = utf8.DecodeRune(data[advance:]); last_size == 0 {
-			break
+		if self.last_rune, self.last_size = utf8.DecodeRune(data[advance:]); self.last_size == 0 {
+			return
 		}
-		// log.Debug("rune: '%c', last_size: %v", last_rune, last_size)
-		advance += last_size
-		
-		if last_quote == 0 && unicode.In(last_rune, unicode.Quotation_Mark) {
-			last_quote = last_rune
-		} else if last_quote == last_rune {
-			last_quote = 0
-		} else if _, ok := self.Sep[last_rune]; ok && last_quote == 0 {
+		advance += self.last_size
+		switch {
+		case self.last_quote == self.last_rune:
+			self.last_quote = 0
+		case self.last_quote != 0:
+			token = append(token, data[advance - self.last_size:advance]...)
+		case unicode.In(self.last_rune, unicode.Quotation_Mark):
+			self.last_quote = self.last_rune
+		case self.Sep[self.last_rune] != 0:
 			if token == nil {
 				token = []byte{}
 			}
-			break
-		} else if _, ok := self.Ignore[last_rune]; ok && last_quote == 0 {
-			continue
-		} else {
-			token = append(token, data[advance - last_size:advance]...)
+			return
+		case self.Ignore[self.last_rune] != 0:
+			//
+		default:
+			token = append(token, data[advance - self.last_size:advance]...)
 		}
 	}
-	// log.Debug("RETURN: advance=%v, token='%s' (%v)", advance, token, token == nil)
 	return
 }
 
@@ -91,16 +55,16 @@ func Split(in string, s * Split_t) (res []string) {
 
 func SplitCSV(in string) []string {
 	s := &Split_t {
-		Sep: map[rune]int{',': 0},
-		Ignore: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0},
+		Sep: map[rune]int{',': 1},
+		Ignore: map[rune]int{' ': 1, '\t': 1, '\v': 1, '\r': 1, '\n': 1, '\f': 1},
 	}
 	return Split(in, s)
 }
 
 func SplitTSV(in string) []string {
 	s := &Split_t {
-		Sep: map[rune]int{'\t': 0},
-		Ignore: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0},
+		Sep: map[rune]int{'\t': 1},
+		Ignore: map[rune]int{' ': 1, '\t': 1, '\v': 1, '\r': 1, '\n': 1, '\f': 1},
 	}
 	return Split(in, s)
 }
