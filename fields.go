@@ -9,39 +9,6 @@ import "strings"
 import "unicode"
 import "unicode/utf8"
 
-type Fields_t struct {
-	Sep map[rune]int
-	last_quote rune
-}
-
-func (self * Fields_t) test(c rune) bool {
-	switch {
-	case self.last_quote == c:
-		self.last_quote = 0
-		return true		// false to keep quotes
-	case self.last_quote != 0:
-		return false
-	case unicode.In(c, unicode.Quotation_Mark):
-		self.last_quote = c
-		return true		// false to keep quotes
-	default:
-		_, ok := self.Sep[c]
-		return ok
-	}
-}
-
-func (self * Fields_t) Fields(in string) []string {
-	return strings.FieldsFunc(in, self.test)
-}
-
-func FieldsTSV(in string) []string {
-	return (&Fields_t {Sep: map[rune]int{' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0}}).Fields(in)
-}
-
-func FieldsCSV(in string) []string {
-	return (&Fields_t{Sep: map[rune]int{',': 0, ' ': 0, '\t': 0, '\v': 0, '\r': 0, '\n': 0, '\f': 0}}).Fields(in)
-}
-
 type Split_t struct {
 	Sep map[rune]int
 	Ignore map[rune]int
