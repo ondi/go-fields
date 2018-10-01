@@ -10,7 +10,7 @@ import "strings"
 import "unicode"
 import "unicode/utf8"
 
-import "github.com/ondi/go-log"
+// import "github.com/ondi/go-log"
 
 type Split_t struct {
 	Sep map[rune]int
@@ -22,7 +22,7 @@ type Split_t struct {
 }
 
 func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	log.Debug("data = '%s', EOF = %v", data, atEOF)
+	// log.Debug("data = '%s', EOF = %v", data, atEOF)
 	
 	if len(data) == 0 && atEOF {
 		if self.last_quote != 0 {
@@ -41,7 +41,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 		if self.last_rune, self.last_size = utf8.DecodeRune(data[advance:]); self.last_size == 0 {
 			return
 		}
-		log.Debug("rune = '%c', size = %d", self.last_rune, self.last_size)
+		// log.Debug("rune = '%c', size = %d", self.last_rune, self.last_size)
 		advance += self.last_size
 		switch {
 		case self.last_quote == self.last_rune:
