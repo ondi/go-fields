@@ -14,6 +14,14 @@ type Data_t struct {
 
 var data = []Data_t {
 	{
+		In: "",
+		Out: []string{},
+	},
+	{
+		In: "1",
+		Out: []string{"1"},
+	},
+	{
 		In: ",",
 		Out: []string{"", ""},
 	},
@@ -57,18 +65,22 @@ func Test001(t * testing.T) {
 		if v.Err {
 			if err == nil {
 				t.Fatalf("NO ERROR FOUND")
+				return
 			}
 		} else {
 			if err != nil {
 				t.Fatalf("ERROR: %v", err)
+				return
 			}
 		}
 		if len(res) != len(v.Out) {
 			t.Fatalf("LENGTH")
+			return
 		}
 		for i, j := range res {
 			if j != v.Out[i] {
 				t.Fatalf("ELEMENT: '%v' != '%v'", j, v.Out[i])
+				return
 			}
 		}
 	}
