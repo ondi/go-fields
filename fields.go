@@ -16,14 +16,14 @@ type Split_t struct {
 	Quote map[rune]int
 	Ignore map[rune]int
 	last_quote rune
-	last_rune rune
-	last_size int
-	last_rune_is_sep bool
-	quote_not_at_begin bool
+	produce_token bool
 }
 
 func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	// log.Debug("data = '%s', EOF = %v", data, atEOF)
+	var last_rune rune
+	var last_size int
+	var advance2 int
+	var produce_quote bool
 	
 	if len(data) == 0 && atEOF {
 		if self.last_quote != 0 {
@@ -31,48 +31,63 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 			err = fmt.Errorf("unmatched quote")
 			return
 		}
-		if self.last_rune_is_sep {
-			self.last_rune_is_sep = false
+		if self.produce_token {
+			self.produce_token = false
 			token = []byte{}
 		}
 		return
 	}
 	
 	for {
-		if self.last_rune, self.last_size = utf8.DecodeRune(data[advance:]); self.last_size == 0 {
-			return
-		}
-		advance += self.last_size
-		// log.Debug("rune = '%c', size = %d", self.last_rune, self.last_size)
+		last_rune, last_size = utf8.DecodeRune(data[advance:])
+		advance += last_size
+		// log.Debug("rune = '%c', size = %d", last_rune, last_size)
 		switch {
-		case self.last_quote == self.last_rune:
-			self.last_quote = 0
-			if self.quote_not_at_begin {
-				token = append(token, data[advance - self.last_size:advance]...)
-			}
-		case self.Quote[self.last_rune] != 0:
-			self.last_quote = self.last_rune
+		case last_size == 0:
 			if len(token) > 0 {
-				self.quote_not_at_begin = true
-				token = append(token, data[advance - self.last_size:advance]...)
+				token = token[:advance2]
+			}
+			return
+		case self.last_quote == last_rune:
+			self.last_quote = 0
+			if produce_quote {
+				token = append(token, data[advance - last_size:advance]...)
+				self.produce_token = false
+				advance2 = len(token)
+			}
+		case self.Quote[last_rune] != 0:
+			self.last_quote = last_rune
+			if len(token) > 0 {
+				token = append(token, data[advance - last_size:advance]...)
+				self.produce_token = false
+				produce_quote = true
+				advance2 = len(token)
+			} else {
+				self.produce_token = true
 			}
 		case self.last_quote != 0:
-			self.last_rune_is_sep = false
-			token = append(token, data[advance - self.last_size:advance]...)
-		case self.Sep[self.last_rune] != 0:
-			self.last_rune_is_sep = true
+			token = append(token, data[advance - last_size:advance]...)
+			self.produce_token = false
+			advance2 = len(token)
+		case self.Sep[last_rune] != 0:
+			self.produce_token = true
 			if token == nil {
 				token = []byte{}
+			} else {
+				token = token[:advance2]
 			}
 			return
-		case self.Ignore[self.last_rune] != 0 && len(token) == 0:
-			//
+		case self.Ignore[last_rune] != 0:
+			if len(token) > 0 {
+				token = append(token, data[advance - last_size:advance]...)
+				self.produce_token = false
+			}
 		default:
-			self.last_rune_is_sep = false
-			token = append(token, data[advance - self.last_size:advance]...)
+			token = append(token, data[advance - last_size:advance]...)
+			self.produce_token = false
+			advance2 = len(token)
 		}
 	}
-	// return 0, data, bufio.ErrFinalToken
 	return
 }
 

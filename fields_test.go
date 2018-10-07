@@ -7,61 +7,77 @@ package fields
 import "testing"
 
 type Data_t struct {
-	In string
-	Out []string
+	Input string
+	Expect []string
 	Err bool
 }
 
 var data1 = []Data_t {
 	{
-		In: "",
-		Out: []string{},
+		Input: "",
+		Expect: []string{},
 	},
 	{
-		In: "1",
-		Out: []string{"1"},
+		Input: "''",
+		Expect: []string{""},
 	},
 	{
-		In: ",",
-		Out: []string{"", ""},
+		Input: "1",
+		Expect: []string{"1"},
 	},
 	{
-		In: ",,",
-		Out: []string{"", "", ""},
+		Input: "'1'",
+		Expect: []string{"1"},
 	},
 	{
-		In: "«»,»«, « »",
-		Out: []string{"«»", "»«", "« »"},
+		Input: ",",
+		Expect: []string{"", ""},
 	},
 	{
-		In: "aaa'bbb'ccc,",
-		Out: []string{"aaa'bbb'ccc", ""},
+		Input: "'',",
+		Expect: []string{"", ""},
 	},
 	{
-		In: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4', ,aaa'5'bbb , this is test   ",
-		Out: []string{"", "", "',1,'", "", "' 2 '", "", "' ,3 ,'", "", "aaa4", "", "aaa5bbb", "this is test"},
+		Input: "'',''",
+		Expect: []string{"", ""},
 	},
 	{
-		In: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4', ,aaa'5'bbb , this is test   ,",
-		Out: []string{"", "", "',1,'", "", "' 2 '", "", "' ,3 ,'", "", "aaa4", "", "aaa5bbb", "this is test", ""},
+		Input: ",,",
+		Expect: []string{"", "", ""},
 	},
 	{
-		In: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4', ,aaa'5'bbb , this is test   ,''",
-		Out: []string{"", "", "',1,'", "", "' 2 '", "", "' ,3 ,'", "", "aaa4", "", "aaa5bbb", "this is test", ""},
+		Input: "«»,»«, « »",
+		Expect: []string{"«»", "»«", "« »"},
 	},
 	{
-		In: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4', ,aaa'5'bbb , this is test   ,'",
-		Out: []string{"", "", "',1,'", "", "' 2 '", "", "' ,3 ,'", "", "aaa4", "", "aaa5bbb", "this is test"},
+		Input: "aaa'bbb'ccc,",
+		Expect: []string{"aaa'bbb'ccc", ""},
+	},
+	{
+		Input: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , this is test   ",
+		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "this is test"},
+	},
+	{
+		Input: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , this is test   ,",
+		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "this is test", ""},
+	},
+	{
+		Input: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , this is test   ,''",
+		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "this is test", ""},
+	},
+	{
+		Input: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , this is test   ,'",
+		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "this is test"},
 		Err: true,
 	},
 }
 
 func Test001(t * testing.T) {
 	for _, v := range data1 {
-		res, err := SplitCSV(v.In)
-		t.Logf("In   = %v", v.In)
-		t.Logf("Out1 = %#v", v.Out)
-		t.Logf("Out2 = %#v", res)
+		res, err := SplitCSV(v.Input)
+		t.Logf("Input  = %v", v.Input)
+		t.Logf("Expect = %#v", v.Expect)
+		t.Logf("Result = %#v", res)
 		if v.Err {
 			if err == nil {
 				t.Fatalf("NO ERROR FOUND")
@@ -73,13 +89,13 @@ func Test001(t * testing.T) {
 				return
 			}
 		}
-		if len(res) != len(v.Out) {
+		if len(res) != len(v.Expect) {
 			t.Fatalf("LENGTH")
 			return
 		}
 		for i, j := range res {
-			if j != v.Out[i] {
-				t.Fatalf("ELEMENT: '%v' != '%v'", j, v.Out[i])
+			if j != v.Expect[i] {
+				t.Fatalf("ELEMENT: '%v' != '%v'", j, v.Expect[i])
 				return
 			}
 		}
