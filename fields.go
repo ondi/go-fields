@@ -45,9 +45,6 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 			if len(token) > 0 {
 				token = token[:last_len]
 			}
-			if self.last_quote != 0 {
-				err = fmt.Errorf("unmatched quote")
-			}
 			return
 		case self.last_quote == last_rune:
 			self.last_quote = 0
@@ -70,9 +67,6 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 				token = []byte{}
 			} else {
 				token = token[:last_len]
-			}
-			if self.last_quote != 0 {
-				err = fmt.Errorf("unmatched quote")
 			}
 			return
 		case self.Ignore[last_rune] != 0:
