@@ -34,8 +34,8 @@ var data1 = []Data_t {
 		Out: []string{"«»", "»«", "« »"},
 	},
 	{
-		In: "   1   ,",
-		Out: []string{"1", ""},
+		In: "aaa'bbb'ccc,",
+		Out: []string{"aaa'bbb'ccc", ""},
 	},
 	{
 		In: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4', ,aaa'5'bbb , this is test   ",

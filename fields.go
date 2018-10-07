@@ -16,9 +16,10 @@ type Split_t struct {
 	Quote map[rune]int
 	Ignore map[rune]int
 	last_quote rune
-	last_split rune
 	last_rune rune
 	last_size int
+	last_rune_is_sep bool
+	quote_not_at_begin bool
 }
 
 func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -30,8 +31,8 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 			err = fmt.Errorf("unmatched quote")
 			return
 		}
-		if self.last_split != 0 {
-			self.last_split = 0
+		if self.last_rune_is_sep {
+			self.last_rune_is_sep = false
 			token = []byte{}
 		}
 		return
@@ -41,18 +42,25 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 		if self.last_rune, self.last_size = utf8.DecodeRune(data[advance:]); self.last_size == 0 {
 			return
 		}
-		// log.Debug("rune = '%c', size = %d", self.last_rune, self.last_size)
 		advance += self.last_size
+		// log.Debug("rune = '%c', size = %d", self.last_rune, self.last_size)
 		switch {
 		case self.last_quote == self.last_rune:
 			self.last_quote = 0
+			if self.quote_not_at_begin {
+				token = append(token, data[advance - self.last_size:advance]...)
+			}
 		case self.Quote[self.last_rune] != 0:
 			self.last_quote = self.last_rune
+			if len(token) > 0 {
+				self.quote_not_at_begin = true
+				token = append(token, data[advance - self.last_size:advance]...)
+			}
 		case self.last_quote != 0:
-			self.last_split = 0
+			self.last_rune_is_sep = false
 			token = append(token, data[advance - self.last_size:advance]...)
 		case self.Sep[self.last_rune] != 0:
-			self.last_split = self.last_rune
+			self.last_rune_is_sep = true
 			if token == nil {
 				token = []byte{}
 			}
@@ -60,7 +68,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 		case self.Ignore[self.last_rune] != 0 && len(token) == 0:
 			//
 		default:
-			self.last_split = 0
+			self.last_rune_is_sep = false
 			token = append(token, data[advance - self.last_size:advance]...)
 		}
 	}
