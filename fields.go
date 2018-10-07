@@ -22,12 +22,10 @@ type Split_t struct {
 func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	var last_rune rune
 	var last_size int
-	var advance2 int
-	var produce_quote bool
+	var last_len int
 	
 	if len(data) == 0 && atEOF {
 		if self.last_quote != 0 {
-			self.last_quote = 0
 			err = fmt.Errorf("unmatched quote")
 			return
 		}
@@ -45,36 +43,36 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 		switch {
 		case last_size == 0:
 			if len(token) > 0 {
-				token = token[:advance2]
+				token = token[:last_len]
+			}
+			if self.last_quote != 0 {
+				err = fmt.Errorf("unmatched quote")
 			}
 			return
 		case self.last_quote == last_rune:
 			self.last_quote = 0
-			if produce_quote {
-				token = append(token, data[advance - last_size:advance]...)
-				self.produce_token = false
-				advance2 = len(token)
-			}
 		case self.Quote[last_rune] != 0:
-			self.last_quote = last_rune
 			if len(token) > 0 {
 				token = append(token, data[advance - last_size:advance]...)
 				self.produce_token = false
-				produce_quote = true
-				advance2 = len(token)
+				last_len = len(token)
 			} else {
+				self.last_quote = last_rune
 				self.produce_token = true
 			}
 		case self.last_quote != 0:
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
-			advance2 = len(token)
+			last_len = len(token)
 		case self.Sep[last_rune] != 0:
 			self.produce_token = true
 			if token == nil {
 				token = []byte{}
 			} else {
-				token = token[:advance2]
+				token = token[:last_len]
+			}
+			if self.last_quote != 0 {
+				err = fmt.Errorf("unmatched quote")
 			}
 			return
 		case self.Ignore[last_rune] != 0:
@@ -85,7 +83,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 		default:
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
-			advance2 = len(token)
+			last_len = len(token)
 		}
 	}
 	return
