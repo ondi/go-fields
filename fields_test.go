@@ -38,6 +38,10 @@ var data1 = []Data_t {
 		Expect: []string{"", "it's test"},
 	},
 	{
+		Input: "'', 'it's test'",
+		Expect: []string{"", "its test'"},
+	},
+	{
 		Input: "'',''",
 		Expect: []string{"", ""},
 	},
