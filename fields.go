@@ -7,13 +7,13 @@ package fields
 import "fmt"
 import "bufio"
 import "strings"
-import "unicode"
 import "unicode/utf8"
 
 // import "github.com/ondi/go-log"
 
 type Split_t struct {
 	Sep map[rune]int
+	Quote map[rune]int
 	Ignore map[rune]int
 	last_quote rune
 	last_split rune
@@ -46,7 +46,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 		switch {
 		case self.last_quote == self.last_rune:
 			self.last_quote = 0
-		case unicode.In(self.last_rune, unicode.Quotation_Mark):
+		case self.Quote[self.last_rune] != 0:
 			self.last_quote = self.last_rune
 		case self.last_quote != 0:
 			self.last_split = 0
@@ -81,6 +81,7 @@ func Split(in string, s * Split_t) (res []string, err error) {
 func SplitCSV(in string) ([]string, error) {
 	s := &Split_t {
 		Sep: map[rune]int{',': 1},
+		Quote: map[rune]int{'"': 1, '\'': 1},
 		Ignore: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
 	}
 	return Split(in, s)
@@ -89,6 +90,7 @@ func SplitCSV(in string) ([]string, error) {
 func SplitTSV(in string) ([]string, error) {
 	s := &Split_t {
 		Sep: map[rune]int{'\t': 1},
+		Quote: map[rune]int{'"': 1, '\'': 1},
 		Ignore: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
 	}
 	return Split(in, s)
