@@ -4,7 +4,6 @@
 
 package fields
 
-import "fmt"
 import "bufio"
 import "strings"
 import "unicode/utf8"
@@ -24,24 +23,17 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 	var last_size int
 	var last_len int
 	
-	if len(data) == 0 && atEOF {
-		if self.last_quote != 0 {
-			err = fmt.Errorf("unmatched quote")
-			return
-		}
-		if self.produce_token {
-			self.produce_token = false
-			token = []byte{}
-		}
-		return
-	}
-	
 	for {
 		last_rune, last_size = utf8.DecodeRune(data[advance:])
 		advance += last_size
 		// log.Debug("rune = '%c', size = %d", last_rune, last_size)
 		switch {
 		case last_size == 0:
+			if self.produce_token {
+				self.produce_token = false
+				token = []byte{}
+				return
+			}
 			if len(token) > 0 {
 				token = token[:last_len]
 			}
