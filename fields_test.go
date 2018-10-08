@@ -77,7 +77,7 @@ var data1 = []Data_t {
 
 func Test001(t * testing.T) {
 	for _, v := range data1 {
-		res, err := SplitCSV(v.Input)
+		res, err := Split(v.Input, ',')
 		t.Logf("Input  = %v", v.Input)
 		t.Logf("Expect = %#v, Error=%v", v.Expect, v.Err)
 		t.Logf("Result = %#v, Error=%v", res, err)

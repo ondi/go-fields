@@ -75,7 +75,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 	return
 }
 
-func Split(in string, s * Split_t) (res []string, err error) {
+func split(in string, s * Split_t) (res []string, err error) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
 	scanner.Split(s.Split)
 	for scanner.Scan() {
@@ -85,29 +85,23 @@ func Split(in string, s * Split_t) (res []string, err error) {
 	return
 }
 
-func SplitCSV(in string) ([]string, error) {
+func Split(in string, sep ...rune) ([]string, error) {
 	s := &Split_t {
-		Sep: map[rune]int{',': 1},
+		Sep: map[rune]int{},
 		Quote: map[rune]int{'"': 1, '\'': 1},
 		Ignore: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
 	}
-	return Split(in, s)
-}
-
-func SplitTSV(in string) ([]string, error) {
-	s := &Split_t {
-		Sep: map[rune]int{'\t': 1},
-		Quote: map[rune]int{'"': 1, '\'': 1},
-		Ignore: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
+	for _, r := range sep {
+		s.Sep[r] = 1
 	}
-	return Split(in, s)
+	return split(in, s)
 }
 
 type Strings_t []string
 
 func (self * Strings_t) Set(value string) (err error) {
 	var temp []string
-	if temp, err = SplitCSV(value); err != nil {
+	if temp, err = Split(value, ','); err != nil {
 		return
 	}
 	for _, v := range temp {
