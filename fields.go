@@ -21,7 +21,7 @@ type Split_t struct {
 func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	var last_rune rune
 	var last_size int
-	var last_len int
+	var trim_len int
 	
 	for {
 		last_rune, last_size = utf8.DecodeRune(data[advance:])
@@ -35,7 +35,7 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 				return
 			}
 			if len(token) > 0 {
-				token = token[:last_len]
+				token = token[:trim_len]
 			}
 			return
 		case self.last_quote == last_rune:
@@ -44,7 +44,7 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 			if len(token) > 0 {
 				token = append(token, data[advance - last_size:advance]...)
 				self.produce_token = false
-				last_len = len(token)
+				trim_len = len(token)
 			} else {
 				self.last_quote = last_rune
 				self.produce_token = true
@@ -52,13 +52,13 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 		case self.last_quote != 0:
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
-			last_len = len(token)
+			trim_len = len(token)
 		case self.Split[last_rune] != 0:
 			self.produce_token = true
 			if token == nil {
 				token = []byte{}
 			} else {
-				token = token[:last_len]
+				token = token[:trim_len]
 			}
 			return
 		case self.Trim[last_rune] != 0:
@@ -69,7 +69,7 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 		default:
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
-			last_len = len(token)
+			trim_len = len(token)
 		}
 	}
 	return

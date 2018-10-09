@@ -50,12 +50,12 @@ var data1 = []Data_t {
 		Expect: []string{"", "", ""},
 	},
 	{
-		Input: "«»,»«, « »",
+		Input: "«», »«, « »",
 		Expect: []string{"«»", "»«", "« »"},
 	},
 	{
-		Input: "aaa'bbb'ccc,",
-		Expect: []string{"aaa'bbb'ccc", ""},
+		Input: "aaa'b'b'b'ccc,",
+		Expect: []string{"aaa'b'b'b'ccc", ""},
 	},
 	{
 		Input: ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , it's test   ",
