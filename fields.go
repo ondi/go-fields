@@ -11,14 +11,14 @@ import "unicode/utf8"
 // import "github.com/ondi/go-log"
 
 type Split_t struct {
-	Sep map[rune]int
+	Split map[rune]int
 	Quote map[rune]int
-	Ignore map[rune]int
+	Trim map[rune]int
 	last_quote rune
 	produce_token bool
 }
 
-func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	var last_rune rune
 	var last_size int
 	var last_len int
@@ -53,7 +53,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
 			last_len = len(token)
-		case self.Sep[last_rune] != 0:
+		case self.Split[last_rune] != 0:
 			self.produce_token = true
 			if token == nil {
 				token = []byte{}
@@ -61,7 +61,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 				token = token[:last_len]
 			}
 			return
-		case self.Ignore[last_rune] != 0:
+		case self.Trim[last_rune] != 0:
 			if len(token) > 0 {
 				token = append(token, data[advance - last_size:advance]...)
 				self.produce_token = false
@@ -77,7 +77,7 @@ func (self * Split_t) Split(data []byte, atEOF bool) (advance int, token []byte,
 
 func split(in string, s * Split_t) (res []string, err error) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
-	scanner.Split(s.Split)
+	scanner.Split(s.Token)
 	for scanner.Scan() {
 		res = append(res, scanner.Text())
 	}
@@ -87,12 +87,12 @@ func split(in string, s * Split_t) (res []string, err error) {
 
 func Split(in string, sep ...rune) ([]string, error) {
 	s := &Split_t {
-		Sep: map[rune]int{},
+		Split: map[rune]int{},
 		Quote: map[rune]int{'"': 1, '\'': 1},
-		Ignore: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
+		Trim: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
 	}
 	for _, r := range sep {
-		s.Sep[r] = 1
+		s.Split[r] = 1
 	}
 	return split(in, s)
 }
