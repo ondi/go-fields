@@ -18,6 +18,20 @@ type Split_t struct {
 	produce_token bool
 }
 
+func NewSplit(sep []rune, quote []rune, trim []rune) (self * Split_t) {
+	self = &Split_t{Sep: map[rune]int{}, Quote: map[rune]int{}, Trim: map[rune]int{}}
+	for _, v := range sep {
+		self.Sep[v] = 1
+	}
+	for _, v := range quote {
+		self.Quote[v] = 1
+	}
+	for _, v := range trim {
+		self.Trim[v] = 1
+	}
+	return
+}
+
 func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	var last_rune rune
 	var last_size int
@@ -86,15 +100,7 @@ func (self * Split_t) Split(in string) (res []string, err error) {
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
-	s := &Split_t {
-		Sep: map[rune]int{},
-		Quote: map[rune]int{'"': 1, '\'': 1},
-		Trim: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
-	}
-	for _, r := range sep {
-		s.Sep[r] = 1
-	}
-	return s.Split(in)
+	return NewSplit(sep, []rune{'"', '\''}, []rune{'\v', '\f', '\r', '\n', '\t', ' '}).Split(in)
 }
 
 type Strings_t []string
