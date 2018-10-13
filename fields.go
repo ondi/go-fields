@@ -11,7 +11,7 @@ import "unicode/utf8"
 // import "github.com/ondi/go-log"
 
 type Split_t struct {
-	Split map[rune]int
+	Sep map[rune]int
 	Quote map[rune]int
 	Trim map[rune]int
 	last_quote rune
@@ -53,7 +53,7 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
 			trim_len = len(token)
-		case self.Split[last_rune] != 0:
+		case self.Sep[last_rune] != 0:
 			self.produce_token = true
 			if token == nil {
 				token = []byte{}
@@ -75,9 +75,9 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 	return
 }
 
-func split(in string, s * Split_t) (res []string, err error) {
+func (self * Split_t) Split(in string) (res []string, err error) {
 	scanner := bufio.NewScanner(strings.NewReader(in))
-	scanner.Split(s.Token)
+	scanner.Split(self.Token)
 	for scanner.Scan() {
 		res = append(res, scanner.Text())
 	}
@@ -87,14 +87,14 @@ func split(in string, s * Split_t) (res []string, err error) {
 
 func Split(in string, sep ...rune) ([]string, error) {
 	s := &Split_t {
-		Split: map[rune]int{},
+		Sep: map[rune]int{},
 		Quote: map[rune]int{'"': 1, '\'': 1},
 		Trim: map[rune]int{'\v': 1, '\f': 1, '\r': 1, '\n': 1, '\t': 1, ' ': 1},
 	}
 	for _, r := range sep {
-		s.Split[r] = 1
+		s.Sep[r] = 1
 	}
-	return split(in, s)
+	return s.Split(in)
 }
 
 type Strings_t []string
