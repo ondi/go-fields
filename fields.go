@@ -10,24 +10,29 @@ import "unicode/utf8"
 
 // import "github.com/ondi/go-log"
 
+type Quote_t struct {
+	Open rune
+	Close rune
+}
+
 type Split_t struct {
 	Sep map[rune]int
-	Quote map[rune]int
 	Trim map[rune]int
+	Quote map[rune]rune		// map[open_quote]close_quote
 	last_quote rune
 	produce_token bool
 }
 
-func NewSplit(sep []rune, quote []rune, trim []rune) (self * Split_t) {
-	self = &Split_t{Sep: map[rune]int{}, Quote: map[rune]int{}, Trim: map[rune]int{}}
+func NewSplit(sep []rune, trim []rune, quote []Quote_t) (self * Split_t) {
+	self = &Split_t{Sep: map[rune]int{}, Trim: map[rune]int{}, Quote: map[rune]rune{}}
 	for _, v := range sep {
 		self.Sep[v] = 1
 	}
-	for _, v := range quote {
-		self.Quote[v] = 1
-	}
 	for _, v := range trim {
 		self.Trim[v] = 1
+	}
+	for _, v := range quote {
+		self.Quote[v.Open] = v.Close
 	}
 	return
 }
@@ -54,20 +59,20 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 			return
 		case self.last_quote == last_rune:
 			self.last_quote = 0
-		case self.Quote[last_rune] != 0:
+		case self.Quote[last_rune] > 0:
 			if len(token) > 0 {
 				token = append(token, data[advance - last_size:advance]...)
 				self.produce_token = false
 				trim_len = len(token)
 			} else {
-				self.last_quote = last_rune
+				self.last_quote = self.Quote[last_rune]
 				self.produce_token = true
 			}
-		case self.last_quote != 0:
+		case self.last_quote > 0:
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
 			trim_len = len(token)
-		case self.Sep[last_rune] != 0:
+		case self.Sep[last_rune] > 0:
 			self.produce_token = true
 			if token == nil {
 				token = []byte{}
@@ -75,7 +80,7 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 				token = token[:trim_len]
 			}
 			return
-		case self.Trim[last_rune] != 0:
+		case self.Trim[last_rune] > 0:
 			if len(token) > 0 {
 				token = append(token, data[advance - last_size:advance]...)
 				self.produce_token = false
@@ -100,7 +105,7 @@ func (self * Split_t) Split(in string) (res []string, err error) {
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
-	return NewSplit(sep, []rune{'"', '\''}, []rune{'\v', '\f', '\r', '\n', '\t', ' '}).Split(in)
+	return NewSplit(sep, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}}).Split(in)
 }
 
 type Strings_t []string
