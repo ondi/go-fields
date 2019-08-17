@@ -16,15 +16,16 @@ type Quote_t struct {
 }
 
 type Split_t struct {
-	Sep map[rune]int
-	Trim map[rune]int
-	Quote map[rune]rune		// map[open_quote]close_quote
+	Sep map[rune]rune
+	Trim map[rune]rune
+	Quote map[rune]rune
 	last_quote rune
+	last_count int
 	produce_token bool
 }
 
 func NewSplit(sep []rune, trim []rune, quote []Quote_t) (self * Split_t) {
-	self = &Split_t{Sep: map[rune]int{}, Trim: map[rune]int{}, Quote: map[rune]rune{}}
+	self = &Split_t{Sep: map[rune]rune{}, Trim: map[rune]rune{}, Quote: map[rune]rune{}}
 	for _, v := range sep {
 		self.Sep[v] = 1
 	}
@@ -58,9 +59,16 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 			}
 			return
 		case self.last_quote == last_rune:
-			self.last_quote = 0
+			self.last_count--
+			if self.last_count == 0 {
+				self.last_quote = 0
+			} else {
+				token = append(token, data[advance - last_size:advance]...)
+				self.produce_token = false
+				trim_len = len(token)
+			}
 		case self.Quote[last_rune] > 0:
-			if len(token) > 0 {
+			if len(token) > 0 || self.last_count > 0 {
 				token = append(token, data[advance - last_size:advance]...)
 				self.produce_token = false
 				trim_len = len(token)
@@ -68,13 +76,15 @@ func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte,
 				self.last_quote = self.Quote[last_rune]
 				self.produce_token = true
 			}
+			self.last_count++
 		case self.last_quote > 0:
 			token = append(token, data[advance - last_size:advance]...)
 			self.produce_token = false
 			trim_len = len(token)
 		case self.Sep[last_rune] > 0:
 			self.produce_token = true
-			if token == nil {
+			self.last_count = 0
+			if len(token) == 0 {
 				token = []byte{}
 			} else {
 				token = token[:trim_len]
