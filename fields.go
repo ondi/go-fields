@@ -4,118 +4,132 @@
 
 package fields
 
-import "bufio"
 import "strings"
-import "unicode/utf8"
 
-// import "github.com/ondi/go-log"
+import "github.com/ondi/go-log"
 
 type Quote_t struct {
 	Open rune
 	Close rune
 }
 
-type Split_t struct {
-	Sep map[rune]rune
-	Trim map[rune]rune
-	Quote map[rune]rune
-	last_quote rune
-	last_count int
-	produce_token bool
+type Lexer_t struct {
+	sep map[rune]rune
+	trim map[rune]rune
+	quote map[rune]rune
+	
+	reader * strings.Reader
+	last_quote []rune
+	last_token strings.Builder
+	tokens []string
+	quoted_prev bool
+	quoted_curr bool
+	err error
 }
 
-func NewSplit(sep []rune, trim []rune, quote []Quote_t) (self * Split_t) {
-	self = &Split_t{Sep: map[rune]rune{}, Trim: map[rune]rune{}, Quote: map[rune]rune{}}
+type StateFunc func(l * Lexer_t) StateFunc
+
+func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
+	self = &Lexer_t{sep: map[rune]rune{}, trim: map[rune]rune{}, quote: map[rune]rune{}, tokens: []string{}}
 	for _, v := range sep {
-		self.Sep[v] = 1
+		self.sep[v] = 1
 	}
 	for _, v := range trim {
-		self.Trim[v] = 1
+		self.trim[v] = 1
 	}
 	for _, v := range quote {
-		self.Quote[v.Open] = v.Close
+		self.quote[v.Open] = v.Close
 	}
 	return
 }
 
-func (self * Split_t) Token(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	var last_rune rune
-	var last_size int
-	var trim_len int
-	
-	for {
-		last_rune, last_size = utf8.DecodeRune(data[advance:])
-		advance += last_size
-		// log.Debug("rune = '%c', size = %d", last_rune, last_size)
-		switch {
-		case last_size == 0:
-			if self.produce_token {
-				self.produce_token = false
-				token = []byte{}
-				return
-			}
-			if len(token) > 0 {
-				token = token[:trim_len]
-			}
-			return
-		case self.last_quote == last_rune:
-			self.last_count--
-			if self.last_count == 0 {
-				self.last_quote = 0
-			} else {
-				token = append(token, data[advance - last_size:advance]...)
-				self.produce_token = false
-				trim_len = len(token)
-			}
-		case self.Quote[last_rune] > 0:
-			if len(token) > 0 || self.last_count > 0 {
-				token = append(token, data[advance - last_size:advance]...)
-				self.produce_token = false
-				trim_len = len(token)
-			} else {
-				self.last_quote = self.Quote[last_rune]
-				self.produce_token = true
-			}
-			self.last_count++
-		case self.last_quote > 0:
-			token = append(token, data[advance - last_size:advance]...)
-			self.produce_token = false
-			trim_len = len(token)
-		case self.Sep[last_rune] > 0:
-			self.produce_token = true
-			self.last_count = 0
-			if len(token) == 0 {
-				token = []byte{}
-			} else {
-				token = token[:trim_len]
-			}
-			return
-		case self.Trim[last_rune] > 0:
-			if len(token) > 0 {
-				token = append(token, data[advance - last_size:advance]...)
-				self.produce_token = false
-			}
-		default:
-			token = append(token, data[advance - last_size:advance]...)
-			self.produce_token = false
-			trim_len = len(token)
+func Unquoted(lexer * Lexer_t) StateFunc {
+	last_rune, last_size, _ := lexer.reader.ReadRune()
+	log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
+	lexer.quoted_prev = lexer.quoted_curr
+	lexer.quoted_curr = false
+	switch {
+	case lexer.quote[last_rune] > 0:
+		if lexer.last_token.Len() > 0 {
+			lexer.last_token.WriteRune(last_rune)
+			return Unquoted
+		}
+		lexer.last_quote = append(lexer.last_quote, lexer.quote[last_rune])
+		return Quoted
+	case lexer.trim[last_rune] > 0:
+		if lexer.last_token.Len() > 0 {
+			lexer.last_token.WriteRune(last_rune)
+		}
+		return Unquoted
+	case lexer.sep[last_rune] > 0:
+		if len(lexer.tokens) == 0 {
+			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+			lexer.last_token.Reset()
+		}
+		if _, last_size, _ = lexer.reader.ReadRune(); last_size > 0 {
+			lexer.reader.UnreadRune()
+			return Unquoted
+		}
+		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+		return nil
+	case last_size > 0:
+		lexer.last_token.WriteRune(last_rune)
+		return Unquoted
+	case last_size == 0:
+		if lexer.last_token.Len() > 0 {
+			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+			lexer.last_token.Reset()
 		}
 	}
-	return
+	return nil
 }
 
-func (self * Split_t) Split(in string) (res []string, err error) {
-	scanner := bufio.NewScanner(strings.NewReader(in))
-	scanner.Split(self.Token)
-	for scanner.Scan() {
-		res = append(res, scanner.Text())
+func Quoted(lexer * Lexer_t) StateFunc {
+	last_rune, last_size, _ := lexer.reader.ReadRune()
+	log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
+	lexer.quoted_prev = lexer.quoted_curr
+	lexer.quoted_curr = true
+	switch {
+	case lexer.last_quote[len(lexer.last_quote) - 1] == last_rune:
+		lexer.last_quote = lexer.last_quote[:len(lexer.last_quote) - 1]
+		// if lexer.last_token.Len() > 0 {
+		if lexer.quoted_prev == false {
+			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+			lexer.last_token.Reset()
+		}
+		if len(lexer.last_quote) > 0 {
+			return Quoted
+		}
+		return Unquoted
+	case lexer.quote[last_rune] > 0:
+		lexer.last_quote = append(lexer.last_quote, lexer.quote[last_rune])
+		if lexer.last_token.Len() > 0 {
+			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+			lexer.last_token.Reset()
+		}
+		return Quoted
+	case last_size > 0:
+		lexer.last_token.WriteRune(last_rune)
+		return Quoted
+	case last_size == 0:
+		if lexer.last_token.Len() > 0 {
+			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+			lexer.last_token.Reset()
+		}
 	}
-	err = scanner.Err()
-	return
+	return nil
+}
+
+func (self * Lexer_t) Split(in string) (res []string, err error) {
+	self.reader = strings.NewReader(in)
+	for state := Unquoted(self); state != nil; {
+		state = state(self)
+	}
+	return self.tokens, self.err
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
-	return NewSplit(sep, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}}).Split(in)
+	return NewLexer(sep, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}}).Split(in)
 }
 
 type Strings_t []string
