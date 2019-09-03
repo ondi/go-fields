@@ -6,7 +6,7 @@ package fields
 
 import "strings"
 
-import "github.com/ondi/go-log"
+// import "github.com/ondi/go-log"
 
 type Quote_t struct {
 	Open rune
@@ -23,8 +23,6 @@ type Lexer_t struct {
 	last_token strings.Builder
 	last_trim strings.Builder
 	tokens []string
-	quoted_prev bool
-	quoted_curr bool
 	err error
 }
 
@@ -46,9 +44,7 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 
 func Unquoted(lexer * Lexer_t) StateFunc {
 	last_rune, last_size, _ := lexer.reader.ReadRune()
-	log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
-	lexer.quoted_prev = lexer.quoted_curr
-	lexer.quoted_curr = false
+	// log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
 	switch {
 	case lexer.quote[last_rune] > 0:
 		if lexer.last_token.Len() > 0 {
@@ -81,19 +77,15 @@ func Unquoted(lexer * Lexer_t) StateFunc {
 		lexer.last_token.WriteRune(last_rune)
 		return Unquoted
 	case last_size == 0:
-		if lexer.last_token.Len() > 0 || lexer.quoted_prev {
-			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-			lexer.last_token.Reset()
-		}
+		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+		lexer.last_token.Reset()
 	}
 	return nil
 }
 
 func Quoted(lexer * Lexer_t) StateFunc {
 	last_rune, last_size, _ := lexer.reader.ReadRune()
-	log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
-	lexer.quoted_prev = lexer.quoted_curr
-	lexer.quoted_curr = true
+	// log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
 	switch {
 	case lexer.last_quote[len(lexer.last_quote) - 1] == last_rune:
 		lexer.last_quote = lexer.last_quote[:len(lexer.last_quote) - 1]

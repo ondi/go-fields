@@ -15,7 +15,7 @@ type Data_t struct {
 var data1 = []Data_t {
 	{
 		Input: "",
-		Expect: []string{},
+		Expect: []string{""},
 	},
 	{
 		Input: "''",
