@@ -62,12 +62,6 @@ func Unquoted(lexer * Lexer_t) StateFunc {
 		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
 		lexer.last_token.Reset()
 		lexer.last_trim.Reset()
-		if _, last_size, _ = lexer.reader.ReadRune(); last_size == 0 {
-			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-			return nil
-		} else {
-			lexer.reader.UnreadRune()
-		}
 		return Unquoted
 	case last_size > 0:
 		if lexer.last_trim.Len() > 0 {
