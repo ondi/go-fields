@@ -39,15 +39,15 @@ var data1 = []Data_t {
 	},
 	{
 		Input: "((1,2,3))",
-		Expect: []string{"1,2,3"},
+		Expect: []string{"(1,2,3)"},
 	},
 	{
 		Input: "(((1,2,3)))",
-		Expect: []string{"1,2,3"},
+		Expect: []string{"((1,2,3))"},
 	},
 	{
 		Input: "(((1,2,3",
-		Expect: []string{"1,2,3"},
+		Expect: []string{"((1,2,3"},
 	},
 	{
 		Input: ",",

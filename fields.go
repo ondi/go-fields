@@ -19,7 +19,7 @@ type Lexer_t struct {
 	quote map[rune]rune
 	
 	reader * strings.Reader
-	last_quote []rune
+	last_quote rune
 	last_token strings.Builder
 	last_trim strings.Builder
 	tokens []string
@@ -51,7 +51,7 @@ func Unquoted(lexer * Lexer_t) StateFunc {
 			lexer.last_token.WriteRune(last_rune)
 			return Unquoted
 		}
-		lexer.last_quote = append(lexer.last_quote, lexer.quote[last_rune])
+		lexer.last_quote = lexer.quote[last_rune]
 		return Quoted
 	case lexer.trim[last_rune] > 0:
 		if lexer.last_token.Len() > 0 {
@@ -81,15 +81,8 @@ func Quoted(lexer * Lexer_t) StateFunc {
 	last_rune, last_size, _ := lexer.reader.ReadRune()
 	// log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
 	switch {
-	case lexer.last_quote[len(lexer.last_quote) - 1] == last_rune:
-		lexer.last_quote = lexer.last_quote[:len(lexer.last_quote) - 1]
-		if len(lexer.last_quote) > 0 {
-			return Quoted
-		}
+	case lexer.last_quote == last_rune:
 		return Unquoted
-	case lexer.quote[last_rune] > 0:
-		lexer.last_quote = append(lexer.last_quote, lexer.quote[last_rune])
-		return Quoted
 	case last_size > 0:
 		lexer.last_token.WriteRune(last_rune)
 		return Quoted
