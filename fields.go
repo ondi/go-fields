@@ -21,6 +21,7 @@ type Lexer_t struct {
 	reader * strings.Reader
 	last_quote []rune
 	last_token strings.Builder
+	last_trim strings.Builder
 	tokens []string
 	quoted_prev bool
 	quoted_curr bool
@@ -58,25 +59,29 @@ func Unquoted(lexer * Lexer_t) StateFunc {
 		return Quoted
 	case lexer.trim[last_rune] > 0:
 		if lexer.last_token.Len() > 0 {
-			lexer.last_token.WriteRune(last_rune)
+			lexer.last_trim.WriteRune(last_rune)
 		}
 		return Unquoted
 	case lexer.sep[last_rune] > 0:
-		if len(lexer.tokens) == 0 {
-			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-			lexer.last_token.Reset()
-		}
-		if _, last_size, _ = lexer.reader.ReadRune(); last_size > 0 {
-			lexer.reader.UnreadRune()
-			return Unquoted
-		}
 		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-		return nil
+		lexer.last_token.Reset()
+		lexer.last_trim.Reset()
+		if _, last_size, _ = lexer.reader.ReadRune(); last_size == 0 {
+			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+			return nil
+		} else {
+			lexer.reader.UnreadRune()
+		}
+		return Unquoted
 	case last_size > 0:
+		if lexer.last_trim.Len() > 0 {
+			lexer.last_token.WriteString(lexer.last_trim.String())
+			lexer.last_trim.Reset()
+		}
 		lexer.last_token.WriteRune(last_rune)
 		return Unquoted
 	case last_size == 0:
-		if lexer.last_token.Len() > 0 {
+		if lexer.last_token.Len() > 0 || lexer.quoted_prev {
 			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
 			lexer.last_token.Reset()
 		}
@@ -92,30 +97,19 @@ func Quoted(lexer * Lexer_t) StateFunc {
 	switch {
 	case lexer.last_quote[len(lexer.last_quote) - 1] == last_rune:
 		lexer.last_quote = lexer.last_quote[:len(lexer.last_quote) - 1]
-		// if lexer.last_token.Len() > 0 {
-		if lexer.quoted_prev == false {
-			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-			lexer.last_token.Reset()
-		}
 		if len(lexer.last_quote) > 0 {
 			return Quoted
 		}
 		return Unquoted
 	case lexer.quote[last_rune] > 0:
 		lexer.last_quote = append(lexer.last_quote, lexer.quote[last_rune])
-		if lexer.last_token.Len() > 0 {
-			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-			lexer.last_token.Reset()
-		}
 		return Quoted
 	case last_size > 0:
 		lexer.last_token.WriteRune(last_rune)
 		return Quoted
 	case last_size == 0:
-		if lexer.last_token.Len() > 0 {
-			lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-			lexer.last_token.Reset()
-		}
+		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
+		lexer.last_token.Reset()
 	}
 	return nil
 }
