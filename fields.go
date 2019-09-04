@@ -42,6 +42,14 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 	return
 }
 
+func (self * Lexer_t) Split(in string) (res []string, err error) {
+	self.reader = strings.NewReader(in)
+	for state := Unquoted(self); state != nil; {
+		state = state(self)
+	}
+	return self.tokens, self.err
+}
+
 func Unquoted(lexer * Lexer_t) StateFunc {
 	last_rune, last_size, _ := lexer.reader.ReadRune()
 	// log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
@@ -91,14 +99,6 @@ func Quoted(lexer * Lexer_t) StateFunc {
 		lexer.last_token.Reset()
 	}
 	return nil
-}
-
-func (self * Lexer_t) Split(in string) (res []string, err error) {
-	self.reader = strings.NewReader(in)
-	for state := Unquoted(self); state != nil; {
-		state = state(self)
-	}
-	return self.tokens, self.err
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
