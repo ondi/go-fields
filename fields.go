@@ -42,7 +42,7 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 	return
 }
 
-func (self * Lexer_t) Split(in string) (res []string, err error) {
+func (self * Lexer_t) Split(in string) ([]string, error) {
 	self.reader = strings.NewReader(in)
 	for state := Unquoted(self); state != nil; {
 		state = state(self)
@@ -102,7 +102,10 @@ func Quoted(lexer * Lexer_t) StateFunc {
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
-	return NewLexer(sep, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}, Quote_t{'«', '»'}}).Split(in)
+	return NewLexer(sep,
+		[]rune{'\v', '\f', '\r', '\n', '\t', ' '},
+		[]Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}, Quote_t{'«', '»'}},
+	).Split(in)
 }
 
 type Strings_t []string
