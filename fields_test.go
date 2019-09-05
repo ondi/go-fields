@@ -34,20 +34,20 @@ var data1 = []Data_t {
 		Expect: []string{"1''"},
 	},
 	{
-		Input: "(1,2,3)",
-		Expect: []string{"1,2,3"},
+		Input: "« 1,2,3 »",
+		Expect: []string{" 1,2,3 "},
 	},
 	{
-		Input: "((1,2,3))",
-		Expect: []string{"(1,2,3)"},
+		Input: "«« 1,2,3 »»",
+		Expect: []string{"« 1,2,3 »"},
 	},
 	{
-		Input: "(((1,2,3)))",
-		Expect: []string{"((1,2,3))"},
+		Input: "««« 1,2,3 »»»",
+		Expect: []string{"«« 1,2,3 »»"},
 	},
 	{
-		Input: "(((1,2,3",
-		Expect: []string{"((1,2,3"},
+		Input: "««« 1,2,3",
+		Expect: []string{"«« 1,2,3"},
 	},
 	{
 		Input: ",",
@@ -70,8 +70,8 @@ var data1 = []Data_t {
 		Expect: []string{"", "", ""},
 	},
 	{
-		Input: "«», »«, « »",
-		Expect: []string{"«»", "»«", "« »"},
+		Input: " ( ), ) (, ()",
+		Expect: []string{"( )", ") (", "()"},
 	},
 	{
 		Input: "aaa'b'b'b'ccc,",
@@ -101,8 +101,7 @@ var data1 = []Data_t {
 
 func Test001(t * testing.T) {
 	for _, v := range data1 {
-		s := NewLexer([]rune{','}, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}, Quote_t{'(', ')'}})
-		res, err := s.Split(v.Input)
+		res, err := Split(v.Input, ',')
 		t.Logf("Input  = %v", v.Input)
 		t.Logf("Expect = %#v, Error=%v", v.Expect, v.Err)
 		t.Logf("Result = %#v, Error=%v", res, err)

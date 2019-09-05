@@ -102,7 +102,7 @@ func Quoted(lexer * Lexer_t) StateFunc {
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
-	return NewLexer(sep, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}}).Split(in)
+	return NewLexer(sep, []rune{'\v', '\f', '\r', '\n', '\t', ' '}, []Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}, Quote_t{'«', '»'}}).Split(in)
 }
 
 type Strings_t []string
