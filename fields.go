@@ -26,7 +26,7 @@ type Lexer_t struct {
 	err error
 }
 
-type StateFunc func(l * Lexer_t) StateFunc
+type NextState func() NextState
 
 func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 	self = &Lexer_t{sep: map[rune]rune{}, trim: map[rune]rune{}, quote: map[rune]rune{}, tokens: []string{}}
@@ -44,72 +44,72 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 
 func (self * Lexer_t) Split(in string) ([]string, error) {
 	self.reader = strings.NewReader(in)
-	for state := Begin(self); state != nil; {
-		state = state(self)
+	for state := self.Begin(); state != nil; {
+		state = state()
 	}
 	return self.tokens, self.err
 }
 
-func Begin(lexer * Lexer_t) StateFunc {
-	last_rune, last_size, _ := lexer.reader.ReadRune()
-	// log.Debug("Begin: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
+func (self * Lexer_t) Begin() NextState {
+	last_rune, last_size, _ := self.reader.ReadRune()
+	// log.Debug("Begin: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
 	switch {
-	case lexer.quote[last_rune] > 0:
-		lexer.last_quote = lexer.quote[last_rune]
-		return Quoted
-	case lexer.trim[last_rune] > 0:
-		return Begin
-	case lexer.sep[last_rune] > 0:
-		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-		return Begin
+	case self.quote[last_rune] > 0:
+		self.last_quote = self.quote[last_rune]
+		return self.Quoted
+	case self.trim[last_rune] > 0:
+		return self.Begin
+	case self.sep[last_rune] > 0:
+		self.tokens = append(self.tokens, self.last_token.String())
+		return self.Begin
 	case last_size > 0:
-		lexer.last_token.WriteRune(last_rune)
-		return Unquoted
+		self.last_token.WriteRune(last_rune)
+		return self.Unquoted
 	default:
-		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-		lexer.last_token.Reset()
+		self.tokens = append(self.tokens, self.last_token.String())
+		self.last_token.Reset()
 	}
 	return nil
 }
 
-func Unquoted(lexer * Lexer_t) StateFunc {
-	last_rune, last_size, _ := lexer.reader.ReadRune()
-	// log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
+func (self * Lexer_t) Unquoted() NextState {
+	last_rune, last_size, _ := self.reader.ReadRune()
+	// log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
 	switch {
-	case lexer.trim[last_rune] > 0:
-		lexer.last_trim.WriteRune(last_rune)
-		return Unquoted
-	case lexer.sep[last_rune] > 0:
-		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-		lexer.last_token.Reset()
-		lexer.last_trim.Reset()
-		return Begin
+	case self.trim[last_rune] > 0:
+		self.last_trim.WriteRune(last_rune)
+		return self.Unquoted
+	case self.sep[last_rune] > 0:
+		self.tokens = append(self.tokens, self.last_token.String())
+		self.last_token.Reset()
+		self.last_trim.Reset()
+		return self.Begin
 	case last_size > 0:
-		if lexer.last_trim.Len() > 0 {
-			lexer.last_token.WriteString(lexer.last_trim.String())
-			lexer.last_trim.Reset()
+		if self.last_trim.Len() > 0 {
+			self.last_token.WriteString(self.last_trim.String())
+			self.last_trim.Reset()
 		}
-		lexer.last_token.WriteRune(last_rune)
-		return Unquoted
+		self.last_token.WriteRune(last_rune)
+		return self.Unquoted
 	default:
-		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-		lexer.last_token.Reset()
+		self.tokens = append(self.tokens, self.last_token.String())
+		self.last_token.Reset()
 	}
 	return nil
 }
 
-func Quoted(lexer * Lexer_t) StateFunc {
-	last_rune, last_size, _ := lexer.reader.ReadRune()
-	// log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, lexer.tokens)
+func (self * Lexer_t) Quoted() NextState {
+	last_rune, last_size, _ := self.reader.ReadRune()
+	// log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
 	switch {
-	case lexer.last_quote == last_rune:
-		return Unquoted
+	case self.last_quote == last_rune:
+		return self.Unquoted
 	case last_size > 0:
-		lexer.last_token.WriteRune(last_rune)
-		return Quoted
+		self.last_token.WriteRune(last_rune)
+		return self.Quoted
 	default:
-		lexer.tokens = append(lexer.tokens, lexer.last_token.String())
-		lexer.last_token.Reset()
+		self.tokens = append(self.tokens, self.last_token.String())
+		self.last_token.Reset()
 	}
 	return nil
 }
