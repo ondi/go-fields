@@ -44,67 +44,68 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 
 func (self * Lexer_t) Split(in string) ([]string, error) {
 	self.reader = strings.NewReader(in)
-	for state := self.Begin(); state != nil; {
+	state := self.begin
+	for state != nil {
 		state = state()
 	}
 	return self.tokens, self.err
 }
 
-func (self * Lexer_t) Begin() NextState {
+func (self * Lexer_t) begin() NextState {
 	last_rune, last_size, _ := self.reader.ReadRune()
 	// log.Debug("Begin: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
 	switch {
 	case self.quote[last_rune] > 0:
 		self.last_quote = self.quote[last_rune]
-		return self.Quoted
+		return self.quoted
 	case self.trim[last_rune] > 0:
-		return self.Begin
+		return self.begin
 	case self.sep[last_rune] > 0:
 		self.tokens = append(self.tokens, self.last_token.String())
-		return self.Begin
+		return self.begin
 	case last_size > 0:
 		self.last_token.WriteRune(last_rune)
-		return self.Unquoted
+		return self.unquoted
 	default:
 		self.tokens = append(self.tokens, self.last_token.String())
 		return nil
 	}
 }
 
-func (self * Lexer_t) Unquoted() NextState {
+func (self * Lexer_t) unquoted() NextState {
 	last_rune, last_size, _ := self.reader.ReadRune()
 	// log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
 	switch {
 	case self.trim[last_rune] > 0:
 		self.last_trim.WriteRune(last_rune)
-		return self.Unquoted
+		return self.unquoted
 	case self.sep[last_rune] > 0:
 		self.tokens = append(self.tokens, self.last_token.String())
 		self.last_token.Reset()
 		self.last_trim.Reset()
-		return self.Begin
+		return self.begin
 	case last_size > 0:
 		if self.last_trim.Len() > 0 {
 			self.last_token.WriteString(self.last_trim.String())
 			self.last_trim.Reset()
 		}
 		self.last_token.WriteRune(last_rune)
-		return self.Unquoted
+		return self.unquoted
 	default:
 		self.tokens = append(self.tokens, self.last_token.String())
 		return nil
 	}
 }
 
-func (self * Lexer_t) Quoted() NextState {
+func (self * Lexer_t) quoted() NextState {
 	last_rune, last_size, _ := self.reader.ReadRune()
 	// log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
 	switch {
 	case self.last_quote == last_rune:
-		return self.Unquoted
+		return self.unquoted
 	case last_size > 0:
 		self.last_token.WriteRune(last_rune)
-		return self.Quoted
+		return self.quoted
 	default:
 		self.tokens = append(self.tokens, self.last_token.String())
 		return nil
