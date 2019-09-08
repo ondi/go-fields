@@ -8,10 +8,7 @@ import "strings"
 
 // import "github.com/ondi/go-log"
 
-type Quote_t struct {
-	Open rune
-	Close rune
-}
+type NextState func() NextState
 
 type Lexer_t struct {
 	sep map[rune]rune
@@ -26,7 +23,10 @@ type Lexer_t struct {
 	err error
 }
 
-type NextState func() NextState
+type Quote_t struct {
+	Open rune
+	Close rune
+}
 
 func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 	self = &Lexer_t{sep: map[rune]rune{}, trim: map[rune]rune{}, quote: map[rune]rune{}, tokens: []string{}}
@@ -67,9 +67,8 @@ func (self * Lexer_t) Begin() NextState {
 		return self.Unquoted
 	default:
 		self.tokens = append(self.tokens, self.last_token.String())
-		self.last_token.Reset()
+		return nil
 	}
-	return nil
 }
 
 func (self * Lexer_t) Unquoted() NextState {
@@ -93,9 +92,8 @@ func (self * Lexer_t) Unquoted() NextState {
 		return self.Unquoted
 	default:
 		self.tokens = append(self.tokens, self.last_token.String())
-		self.last_token.Reset()
+		return nil
 	}
-	return nil
 }
 
 func (self * Lexer_t) Quoted() NextState {
@@ -109,9 +107,8 @@ func (self * Lexer_t) Quoted() NextState {
 		return self.Quoted
 	default:
 		self.tokens = append(self.tokens, self.last_token.String())
-		self.last_token.Reset()
+		return nil
 	}
-	return nil
 }
 
 func Split(in string, sep ...rune) ([]string, error) {
