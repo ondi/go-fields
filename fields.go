@@ -135,14 +135,14 @@ func Split(in string, sep ...rune) (res []string, err error) {
 
 type Strings_t []string
 
-func (self * Strings_t) Set(value string) (error) {
-	temp, err := Split(value, ',')
-	if err != nil {
+func (self * Strings_t) Set(value string) (err error) {
+	var temp []string
+	if temp, err = Split(value, ','); err == nil {
 		for _, v := range temp {
 			*self = append(*self, v)
 		}
 	}
-	return err
+	return
 }
 
 func (self * Strings_t) String() string {
