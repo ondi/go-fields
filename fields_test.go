@@ -128,3 +128,13 @@ func Test001(t * testing.T) {
 		}
 	}
 }
+
+func Test002(t * testing.T) {
+	var temp Strings_t
+	temp.Set("default")
+	
+	t.Logf("TEMP: %v", temp)
+	if temp[0] != "default" {
+		t.Fatalf("DEFAULT")
+	}
+}
