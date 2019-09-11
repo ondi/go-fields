@@ -4,6 +4,7 @@
 
 package fields
 
+import "io"
 import "strings"
 
 // import "github.com/ondi/go-log"
@@ -15,7 +16,7 @@ type Lexer_t struct {
 	trim map[rune]rune
 	quote map[rune]rune
 	
-	reader * strings.Reader
+	reader io.RuneReader
 	state NextState
 	last_quote rune
 	last_token strings.Builder
@@ -40,27 +41,6 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 		self.quote[v.Open] = v.Close
 	}
 	return
-}
-
-func (self * Lexer_t) Set(in string) {
-	self.reader = strings.NewReader(in)
-	self.state = self.begin
-}
-
-func (self * Lexer_t) Next() (res string, ok bool) {
-	for self.state != nil {
-		self.state, ok = self.state()
-		if ok {
-			res = self.last_token.String()
-			self.last_token.Reset()
-			return
-		}
-	}
-	return
-}
-
-func (self * Lexer_t) Err() error {
-	return self.err
 }
 
 func (self * Lexer_t) begin() (NextState, bool) {
@@ -118,12 +98,33 @@ func (self * Lexer_t) quoted() (NextState, bool) {
 	}
 }
 
+func (self * Lexer_t) Set(in io.RuneReader) {
+	self.reader = in
+	self.state = self.begin
+}
+
+func (self * Lexer_t) Next() (res string, ok bool) {
+	for self.state != nil {
+		self.state, ok = self.state()
+		if ok {
+			res = self.last_token.String()
+			self.last_token.Reset()
+			return
+		}
+	}
+	return
+}
+
+func (self * Lexer_t) Err() error {
+	return self.err
+}
+
 func Split(in string, sep ...rune) (res []string, err error) {
 	l := NewLexer(sep,
 		[]rune{'\v', '\f', '\r', '\n', '\t', ' '},
 		[]Quote_t{Quote_t{'"', '"'}, Quote_t{'\'', '\''}, Quote_t{'«', '»'}},
 	)
-	l.Set(in)
+	l.Set(strings.NewReader(in))
 	for {
 		if token, ok := l.Next(); !ok {
 			break
