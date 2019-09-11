@@ -48,12 +48,13 @@ func (self * Lexer_t) Set(in string) {
 }
 
 func (self * Lexer_t) Next() (res string, ok bool) {
-	for self.state != nil && ok == false {
+	for self.state != nil {
 		self.state, ok = self.state()
-	}
-	if ok {
-		res = self.last_token.String()
-		self.last_token.Reset()
+		if ok {
+			res = self.last_token.String()
+			self.last_token.Reset()
+			return
+		}
 	}
 	return
 }

@@ -134,7 +134,7 @@ func Test002(t * testing.T) {
 	temp.Set("default")
 	
 	t.Logf("TEMP: %v", temp)
-	if temp[0] != "default" {
+	if len(temp) == 0 || temp[0] != "default" {
 		t.Fatalf("DEFAULT")
 	}
 }
