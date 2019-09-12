@@ -9,19 +9,19 @@ import "strings"
 
 // import "github.com/ondi/go-log"
 
-type Token_t int
+type State_t int
 
 const (
-	TOKEN_NONE Token_t = 0
-	TOKEN_OPEN_QUOTE Token_t = 1
-	TOKEN_CLOSE_QUOTE Token_t = 2
-	TOKEN_SEPARATOR Token_t = 3
-	TOKEN_TRIM Token_t = 4
-	TOKEN_STRING Token_t = 5
-	TOKEN_EOF Token_t = 6
+	STATE_NONE State_t = 0
+	STATE_OPEN_QUOTE State_t = 1
+	STATE_CLOSE_QUOTE State_t = 2
+	STATE_SEPARATOR State_t = 3
+	STATE_TRIM State_t = 4
+	STATE_STRING State_t = 5
+	STATE_EOF State_t = 6
 )
 
-type NextState func() (NextState, Token_t)
+type NextState func() (NextState, State_t)
 
 type Lexer_t struct {
 	sep map[rune]rune
@@ -30,6 +30,8 @@ type Lexer_t struct {
 	
 	reader io.RuneReader
 	state NextState
+	last_rune rune
+	last_size int
 	last_quote rune
 	last_token strings.Builder
 	last_trim strings.Builder
@@ -55,58 +57,58 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self * Lexer_t) {
 	return
 }
 
-func (self * Lexer_t) begin() (NextState, Token_t) {
-	last_rune, last_size, _ := self.reader.ReadRune()
-	// log.Debug("Begin: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
+func (self * Lexer_t) begin() (NextState, State_t) {
+	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+	// log.Debug("begin: rune=`%c`, len=%v, token=%#v", self.last_rune, self.last_size, self.last_token.String())
 	switch {
-	case self.quote[last_rune] > 0:
-		self.last_quote = self.quote[last_rune]
-		return self.quoted, TOKEN_OPEN_QUOTE	// false
-	case self.sep[last_rune] > 0:
-		return self.begin, TOKEN_SEPARATOR		// true
-	case self.trim[last_rune] > 0:
-		return self.begin, TOKEN_TRIM			// false
-	case last_size > 0:
-		self.last_token.WriteRune(last_rune)
-		return self.unquoted, TOKEN_STRING		// false
+	case self.quote[self.last_rune] > 0:
+		self.last_quote = self.quote[self.last_rune]
+		return self.quoted, STATE_OPEN_QUOTE	// false
+	case self.sep[self.last_rune] > 0:
+		return self.begin, STATE_SEPARATOR		// true
+	case self.trim[self.last_rune] > 0:
+		return self.begin, STATE_TRIM			// false
+	case self.last_size > 0:
+		self.last_token.WriteRune(self.last_rune)
+		return self.unquoted, STATE_STRING		// false
 	default:
-		return nil, TOKEN_EOF					// true
+		return nil, STATE_EOF					// true
 	}
 }
 
-func (self * Lexer_t) unquoted() (NextState, Token_t) {
-	last_rune, last_size, _ := self.reader.ReadRune()
-	// log.Debug("Unquoted: rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
+func (self * Lexer_t) unquoted() (NextState, State_t) {
+	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+	// log.Debug("unquoted: rune=`%c`, len=%v, token=%#v", self.last_rune, self.last_size, self.last_token.String())
 	switch {
-	case self.sep[last_rune] > 0:
+	case self.sep[self.last_rune] > 0:
 		self.last_trim.Reset()
-		return self.begin, TOKEN_SEPARATOR		// true
-	case self.trim[last_rune] > 0:
-		self.last_trim.WriteRune(last_rune)
-		return self.unquoted, TOKEN_TRIM		// false
-	case last_size > 0:
+		return self.begin, STATE_SEPARATOR		// true
+	case self.trim[self.last_rune] > 0:
+		self.last_trim.WriteRune(self.last_rune)
+		return self.unquoted, STATE_TRIM		// false
+	case self.last_size > 0:
 		if self.last_trim.Len() > 0 {
 			self.last_token.WriteString(self.last_trim.String())
 			self.last_trim.Reset()
 		}
-		self.last_token.WriteRune(last_rune)
-		return self.unquoted, TOKEN_STRING		// false
+		self.last_token.WriteRune(self.last_rune)
+		return self.unquoted, STATE_STRING		// false
 	default:
-		return nil, TOKEN_EOF					// true
+		return nil, STATE_EOF					// true
 	}
 }
 
-func (self * Lexer_t) quoted() (NextState, Token_t) {
-	last_rune, last_size, _ := self.reader.ReadRune()
-	// log.Debug("Quoted : rune=`%c`, len=%v, tokens=%#v", last_rune, last_size, self.tokens)
+func (self * Lexer_t) quoted() (NextState, State_t) {
+	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+	// log.Debug("quoted: rune=`%c`, len=%v, token=%#v", self.last_rune, self.last_size, self.last_token.String())
 	switch {
-	case self.last_quote == last_rune:
-		return self.unquoted, TOKEN_CLOSE_QUOTE	// false
-	case last_size > 0:
-		self.last_token.WriteRune(last_rune)
-		return self.quoted, TOKEN_STRING		// false
+	case self.last_quote == self.last_rune:
+		return self.unquoted, STATE_CLOSE_QUOTE	// false
+	case self.last_size > 0:
+		self.last_token.WriteRune(self.last_rune)
+		return self.quoted, STATE_STRING		// false
 	default:
-		return nil, TOKEN_EOF					// true
+		return nil, STATE_EOF					// true
 	}
 }
 
@@ -115,12 +117,13 @@ func (self * Lexer_t) Set(in io.RuneReader) {
 	self.state = self.begin
 }
 
-func (self * Lexer_t) Next() (res string, status Token_t) {
+func (self * Lexer_t) Next() (token string, last_rune rune, state State_t) {
 	for self.state != nil {
-		self.state, status = self.state()
-		switch status {
-		case TOKEN_SEPARATOR, TOKEN_EOF:
-			res = self.last_token.String()
+		self.state, state = self.state()
+		switch state {
+		case STATE_SEPARATOR, STATE_EOF:
+			token = self.last_token.String()
+			last_rune = self.last_rune
 			self.last_token.Reset()
 			return
 		}
@@ -139,7 +142,7 @@ func Split(in string, sep ...rune) (res []string, err error) {
 	)
 	l.Set(strings.NewReader(in))
 	for {
-		if token, ok := l.Next(); ok == 0 {
+		if token, _, state := l.Next(); state == STATE_NONE {
 			break
 		} else {
 			res = append(res, token)
