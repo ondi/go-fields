@@ -35,8 +35,8 @@ var data1 = []Data_t{
 		Expect: []string{"1"},
 	},
 	{
-		Input:  "''1''",
-		Expect: []string{"1''"},
+		Input:  "'`1`'",
+		Expect: []string{"`1`"},
 	},
 	{
 		Input:  "« 1,2,3 »",
@@ -53,6 +53,7 @@ var data1 = []Data_t{
 	{
 		Input:  "««« 1,2,3, ",
 		Expect: []string{" 1,2,3, "},
+		Err:    true,
 	},
 	{
 		Input:  ",",
@@ -63,8 +64,8 @@ var data1 = []Data_t{
 		Expect: []string{"", "it's test"},
 	},
 	{
-		Input:  "'', 'it's test'",
-		Expect: []string{"", "its test'"},
+		Input:  "'', 'it\"s test'",
+		Expect: []string{"", "it\"s test"},
 	},
 	{
 		Input:  "'',''",
@@ -101,18 +102,19 @@ var data1 = []Data_t{
 	{
 		Input:  ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , it's test   ,'",
 		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "it's test", ""},
+		Err:    true,
 	},
 }
 
 func Test001(t *testing.T) {
 	for _, v := range data1 {
 		res, err := Split(v.Input, ',')
-		t.Logf("Input  = %v", v.Input)
+		t.Logf("Input  = %#v", v.Input)
 		t.Logf("Expect = %#v, Error=%v", v.Expect, v.Err)
 		t.Logf("Result = %#v, Error=%v", res, err)
 		if v.Err {
 			if err == nil {
-				t.Fatalf("NO ERROR FOUND")
+				t.Fatalf("ERROR EXPECTED")
 				return
 			}
 		} else {
@@ -157,7 +159,7 @@ func Test003(t *testing.T) {
 	l.Set(strings.NewReader("[\"test\"]"))
 	var res []string
 	for {
-		if token, _, state := l.Next(); state == STATE_NONE {
+		if token, state := l.Next(); state == STATE_NONE {
 			break
 		} else {
 			res = append(res, token)
