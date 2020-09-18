@@ -127,10 +127,8 @@ func (self *Lexer_t) separator(prev State_t) (NextState, State_t) {
 	self.last_rune, self.last_size, _ = self.reader.ReadRune()
 	switch {
 	case self.sep[self.last_rune] > 0:
-		self.last_trim.Reset()
 		return self.begin, STATE_SEPARATOR
 	case self.trim[self.last_rune] > 0:
-		self.last_trim.WriteRune(self.last_rune)
 		return self.not_quoted, STATE_TRIM
 	case self.last_size == 0:
 		return nil, STATE_EOF
