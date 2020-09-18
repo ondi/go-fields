@@ -109,13 +109,13 @@ func (self *Lexer_t) quoted(prev State_t) (NextState, State_t) {
 	case self.close_quote[q_len-1] == self.last_rune:
 		self.close_quote = self.close_quote[:q_len-1]
 		if q_len == 1 {
-			return self.wait_separator, STATE_CLOSE_QUOTE
+			return self.separator, STATE_CLOSE_QUOTE
 		}
-		return self.closing_quote, STATE_CLOSE_QUOTE
+		return self.quoted, STATE_CLOSE_QUOTE
 	case prev == STATE_OPEN_QUOTE && self.open_quote[self.last_rune] > 0:
 		self.close_quote = append(self.close_quote, self.open_quote[self.last_rune])
 		return self.quoted, STATE_OPEN_QUOTE
-	case self.last_size > 0:
+	case prev != STATE_CLOSE_QUOTE && self.last_size > 0:
 		self.last_token.WriteRune(self.last_rune)
 		return self.quoted, STATE_STRING
 	default:
@@ -123,27 +123,7 @@ func (self *Lexer_t) quoted(prev State_t) (NextState, State_t) {
 	}
 }
 
-func (self *Lexer_t) closing_quote(prev State_t) (NextState, State_t) {
-	self.last_rune, self.last_size, _ = self.reader.ReadRune()
-	q_len := len(self.close_quote)
-	switch {
-	case self.close_quote[q_len-1] == self.last_rune:
-		self.close_quote = self.close_quote[:q_len-1]
-		if q_len == 1 {
-			return self.wait_separator, STATE_CLOSE_QUOTE
-		}
-		return self.closing_quote, STATE_CLOSE_QUOTE
-	case self.sep[self.last_rune] > 0:
-		self.last_trim.Reset()
-		return self.begin, STATE_SEPARATOR
-	case self.trim[self.last_rune] > 0:
-		return self.closing_quote, STATE_TRIM
-	default:
-		return nil, STATE_ERROR_NO_QUOTE
-	}
-}
-
-func (self *Lexer_t) wait_separator(prev State_t) (NextState, State_t) {
+func (self *Lexer_t) separator(prev State_t) (NextState, State_t) {
 	self.last_rune, self.last_size, _ = self.reader.ReadRune()
 	switch {
 	case self.sep[self.last_rune] > 0:
