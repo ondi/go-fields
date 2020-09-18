@@ -1,5 +1,9 @@
 module github.com/ondi/go-fields
 
-go 1.12
+go 1.15
 
-require github.com/ondi/go-log v0.0.0-20190709110006-2517547430d1
+require (
+	github.com/google/go-cmp v0.5.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	gotest.tools v2.2.0+incompatible
+)
