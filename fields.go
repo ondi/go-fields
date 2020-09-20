@@ -61,7 +61,7 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self *Lexer_t) {
 	return
 }
 
-func (self *Lexer_t) begin(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
+func (self *Lexer_t) begin(last_rune rune, last_size int, last_state State_t) (NextState, State_t) {
 	switch {
 	case self.open_quote[last_rune] > 0:
 		self.close_quote = append(self.close_quote, self.open_quote[last_rune])
@@ -78,7 +78,7 @@ func (self *Lexer_t) begin(last_rune rune, last_size int, prev State_t) (NextSta
 	}
 }
 
-func (self *Lexer_t) not_quoted(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
+func (self *Lexer_t) not_quoted(last_rune rune, last_size int, last_state State_t) (NextState, State_t) {
 	switch {
 	case self.sep[last_rune] > 0:
 		self.last_trim.Reset()
@@ -98,7 +98,7 @@ func (self *Lexer_t) not_quoted(last_rune rune, last_size int, prev State_t) (Ne
 	}
 }
 
-func (self *Lexer_t) quoted(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
+func (self *Lexer_t) quoted(last_rune rune, last_size int, last_state State_t) (NextState, State_t) {
 	q_len := len(self.close_quote)
 	switch {
 	case self.close_quote[q_len-1] == last_rune:
@@ -107,10 +107,10 @@ func (self *Lexer_t) quoted(last_rune rune, last_size int, prev State_t) (NextSt
 			return self.separator, STATE_CLOSE_QUOTE
 		}
 		return self.quoted, STATE_CLOSE_QUOTE
-	case prev == STATE_OPEN_QUOTE && self.open_quote[last_rune] > 0:
+	case last_state == STATE_OPEN_QUOTE && self.open_quote[last_rune] > 0:
 		self.close_quote = append(self.close_quote, self.open_quote[last_rune])
 		return self.quoted, STATE_OPEN_QUOTE
-	case prev != STATE_CLOSE_QUOTE && last_size > 0:
+	case last_state != STATE_CLOSE_QUOTE && last_size > 0:
 		self.last_token.WriteRune(last_rune)
 		return self.quoted, STATE_STRING
 	default:
@@ -118,7 +118,7 @@ func (self *Lexer_t) quoted(last_rune rune, last_size int, prev State_t) (NextSt
 	}
 }
 
-func (self *Lexer_t) separator(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
+func (self *Lexer_t) separator(last_rune rune, last_size int, last_state State_t) (NextState, State_t) {
 	switch {
 	case self.sep[last_rune] > 0:
 		return self.begin, STATE_SEPARATOR
