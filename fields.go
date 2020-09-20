@@ -24,7 +24,7 @@ const (
 	STATE_ERROR_NO_SEPARATOR State_t = 8
 )
 
-type NextState func(State_t) (NextState, State_t)
+type NextState func(rune, int, State_t) (NextState, State_t)
 
 type Lexer_t struct {
 	sep        map[rune]rune
@@ -33,8 +33,6 @@ type Lexer_t struct {
 
 	reader      io.RuneReader
 	state       NextState
-	last_rune   rune
-	last_size   int
 	close_quote []rune
 	last_token  strings.Builder
 	last_trim   strings.Builder
@@ -63,74 +61,70 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self *Lexer_t) {
 	return
 }
 
-func (self *Lexer_t) begin(prev State_t) (NextState, State_t) {
-	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+func (self *Lexer_t) begin(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
 	switch {
-	case self.open_quote[self.last_rune] > 0:
-		self.close_quote = append(self.close_quote, self.open_quote[self.last_rune])
+	case self.open_quote[last_rune] > 0:
+		self.close_quote = append(self.close_quote, self.open_quote[last_rune])
 		return self.quoted, STATE_OPEN_QUOTE
-	case self.sep[self.last_rune] > 0:
+	case self.sep[last_rune] > 0:
 		return self.begin, STATE_SEPARATOR
-	case self.trim[self.last_rune] > 0:
+	case self.trim[last_rune] > 0:
 		return self.begin, STATE_TRIM
-	case self.last_size > 0:
-		self.last_token.WriteRune(self.last_rune)
+	case last_size > 0:
+		self.last_token.WriteRune(last_rune)
 		return self.not_quoted, STATE_STRING
 	default:
 		return nil, STATE_EOF
 	}
 }
 
-func (self *Lexer_t) not_quoted(prev State_t) (NextState, State_t) {
-	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+func (self *Lexer_t) not_quoted(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
 	switch {
-	case self.sep[self.last_rune] > 0:
+	case self.sep[last_rune] > 0:
 		self.last_trim.Reset()
 		return self.begin, STATE_SEPARATOR
-	case self.trim[self.last_rune] > 0:
-		self.last_trim.WriteRune(self.last_rune)
+	case self.trim[last_rune] > 0:
+		self.last_trim.WriteRune(last_rune)
 		return self.not_quoted, STATE_TRIM
-	case self.last_size > 0:
+	case last_size > 0:
 		if self.last_trim.Len() > 0 {
 			self.last_token.WriteString(self.last_trim.String())
 			self.last_trim.Reset()
 		}
-		self.last_token.WriteRune(self.last_rune)
+		self.last_token.WriteRune(last_rune)
 		return self.not_quoted, STATE_STRING
 	default:
 		return nil, STATE_EOF
 	}
 }
 
-func (self *Lexer_t) quoted(prev State_t) (NextState, State_t) {
-	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+func (self *Lexer_t) quoted(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
 	q_len := len(self.close_quote)
 	switch {
-	case self.close_quote[q_len-1] == self.last_rune:
+	case self.close_quote[q_len-1] == last_rune:
 		self.close_quote = self.close_quote[:q_len-1]
 		if q_len == 1 {
 			return self.separator, STATE_CLOSE_QUOTE
 		}
 		return self.quoted, STATE_CLOSE_QUOTE
-	case prev == STATE_OPEN_QUOTE && self.open_quote[self.last_rune] > 0:
-		self.close_quote = append(self.close_quote, self.open_quote[self.last_rune])
+	case prev == STATE_OPEN_QUOTE && self.open_quote[last_rune] > 0:
+		self.close_quote = append(self.close_quote, self.open_quote[last_rune])
 		return self.quoted, STATE_OPEN_QUOTE
-	case prev != STATE_CLOSE_QUOTE && self.last_size > 0:
-		self.last_token.WriteRune(self.last_rune)
+	case prev != STATE_CLOSE_QUOTE && last_size > 0:
+		self.last_token.WriteRune(last_rune)
 		return self.quoted, STATE_STRING
 	default:
 		return nil, STATE_ERROR_NO_QUOTE
 	}
 }
 
-func (self *Lexer_t) separator(prev State_t) (NextState, State_t) {
-	self.last_rune, self.last_size, _ = self.reader.ReadRune()
+func (self *Lexer_t) separator(last_rune rune, last_size int, prev State_t) (NextState, State_t) {
 	switch {
-	case self.sep[self.last_rune] > 0:
+	case self.sep[last_rune] > 0:
 		return self.begin, STATE_SEPARATOR
-	case self.trim[self.last_rune] > 0:
+	case self.trim[last_rune] > 0:
 		return self.not_quoted, STATE_TRIM
-	case self.last_size == 0:
+	case last_size == 0:
 		return nil, STATE_EOF
 	default:
 		return nil, STATE_ERROR_NO_SEPARATOR
@@ -143,8 +137,11 @@ func (self *Lexer_t) Set(in io.RuneReader) {
 }
 
 func (self *Lexer_t) Next() (token string, state State_t) {
+	var last_rune rune
+	var last_size int
 	for self.state != nil {
-		self.state, state = self.state(state)
+		last_rune, last_size, _ = self.reader.ReadRune()
+		self.state, state = self.state(last_rune, last_size, state)
 		if state == STATE_SEPARATOR || state >= STATE_EOF {
 			token = self.last_token.String()
 			self.last_token.Reset()
