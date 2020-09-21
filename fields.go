@@ -123,7 +123,7 @@ func (self *Lexer_t) separator(last_rune rune, last_size int, last_state State_t
 	case self.sep[last_rune] > 0:
 		return self.begin, STATE_SEPARATOR
 	case self.trim[last_rune] > 0:
-		return self.not_quoted, STATE_TRIM
+		return self.separator, STATE_TRIM
 	case last_size == 0:
 		return nil, STATE_EOF
 	default:
