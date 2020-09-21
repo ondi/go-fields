@@ -156,14 +156,14 @@ func Test003(t *testing.T) {
 			{'[', ']'},
 		},
 	)
-	l.Set(strings.NewReader("[\"test\"]"))
+	reader := strings.NewReader("[\"test\"]")
 	var res []string
 	for {
-		if token, state := l.Next(); state == STATE_NONE {
+		token, state := l.Next(reader)
+		if state == STATE_NONE {
 			break
-		} else {
-			res = append(res, token)
 		}
+		res = append(res, token)
 	}
 	assert.Assert(t, len(res) > 0)
 	assert.Assert(t, res[0] == "test", res[0])

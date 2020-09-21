@@ -31,7 +31,6 @@ type Lexer_t struct {
 	trim       map[rune]rune
 	open_quote map[rune]rune
 
-	reader      io.RuneReader
 	state       NextState
 	close_quote []rune
 	last_token  strings.Builder
@@ -49,6 +48,7 @@ func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self *Lexer_t) {
 		trim:       map[rune]rune{},
 		open_quote: map[rune]rune{},
 	}
+	self.state = self.begin
 	for _, v := range sep {
 		self.sep[v] = v
 	}
@@ -131,16 +131,11 @@ func (self *Lexer_t) separator(last_rune rune, last_size int, last_state State_t
 	}
 }
 
-func (self *Lexer_t) Set(in io.RuneReader) {
-	self.reader = in
-	self.state = self.begin
-}
-
-func (self *Lexer_t) Next() (token string, state State_t) {
+func (self *Lexer_t) Next(in io.RuneReader) (token string, state State_t) {
 	var last_rune rune
 	var last_size int
 	for self.state != nil {
-		last_rune, last_size, _ = self.reader.ReadRune()
+		last_rune, last_size, _ = in.ReadRune()
 		self.state, state = self.state(last_rune, last_size, state)
 		if state == STATE_SEPARATOR || state >= STATE_EOF {
 			token = self.last_token.String()
@@ -160,9 +155,9 @@ func Split(in string, sep ...rune) (res []string, err error) {
 			{'«', '»'},
 		},
 	)
-	l.Set(strings.NewReader(in))
+	reader := strings.NewReader(in)
 	for {
-		token, state := l.Next()
+		token, state := l.Next(reader)
 		if state == STATE_NONE {
 			return
 		}
