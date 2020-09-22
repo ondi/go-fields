@@ -92,6 +92,7 @@ func (self *Lexer_t) not_quoted(last_rune rune, last_size int, last_state State_
 		self.last_trim.Reset()
 		return self.begin, STATE_SEPARATOR
 	case self.new_line[last_rune] > 0:
+		self.last_trim.Reset()
 		return self.begin, STATE_NEW_LINE
 	case self.trim[last_rune] > 0:
 		self.last_trim.WriteRune(last_rune)
@@ -159,7 +160,8 @@ func (self *Lexer_t) Next(in io.RuneReader) (token string, state State_t) {
 }
 
 func Split(in string, sep ...rune) (res []string, err error) {
-	l := NewLexer(sep,
+	l := NewLexer(
+		sep,
 		[]rune{'\n'},
 		[]rune{'\v', '\f', '\r', '\t', ' '},
 		[]Quote_t{
