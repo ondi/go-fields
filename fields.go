@@ -17,17 +17,19 @@ const (
 	STATE_OPEN_QUOTE         State_t = 1
 	STATE_CLOSE_QUOTE        State_t = 2
 	STATE_SEPARATOR          State_t = 3
-	STATE_TRIM               State_t = 4
-	STATE_STRING             State_t = 5
-	STATE_EOF                State_t = 6
-	STATE_ERROR_NO_QUOTE     State_t = 7
-	STATE_ERROR_NO_SEPARATOR State_t = 8
+	STATE_NEW_LINE           State_t = 4
+	STATE_TRIM               State_t = 5
+	STATE_DATA               State_t = 6
+	STATE_EOF                State_t = 7
+	STATE_ERROR_NO_QUOTE     State_t = 8
+	STATE_ERROR_NO_SEPARATOR State_t = 9
 )
 
 type NextState func(rune, int, State_t) (NextState, State_t)
 
 type Lexer_t struct {
 	sep        map[rune]rune
+	new_line   map[rune]rune
 	trim       map[rune]rune
 	open_quote map[rune]rune
 
@@ -42,15 +44,19 @@ type Quote_t struct {
 	Close rune
 }
 
-func NewLexer(sep []rune, trim []rune, quote []Quote_t) (self *Lexer_t) {
+func NewLexer(sep []rune, new_line []rune, trim []rune, quote []Quote_t) (self *Lexer_t) {
 	self = &Lexer_t{
 		sep:        map[rune]rune{},
+		new_line:   map[rune]rune{},
 		trim:       map[rune]rune{},
 		open_quote: map[rune]rune{},
 	}
 	self.state = self.begin
 	for _, v := range sep {
 		self.sep[v] = v
+	}
+	for _, v := range new_line {
+		self.new_line[v] = v
 	}
 	for _, v := range trim {
 		self.trim[v] = v
@@ -68,11 +74,13 @@ func (self *Lexer_t) begin(last_rune rune, last_size int, last_state State_t) (N
 		return self.quoted, STATE_OPEN_QUOTE
 	case self.sep[last_rune] > 0:
 		return self.begin, STATE_SEPARATOR
+	case self.new_line[last_rune] > 0:
+		return self.begin, STATE_NEW_LINE
 	case self.trim[last_rune] > 0:
 		return self.begin, STATE_TRIM
 	case last_size > 0:
 		self.last_token.WriteRune(last_rune)
-		return self.not_quoted, STATE_STRING
+		return self.not_quoted, STATE_DATA
 	default:
 		return nil, STATE_EOF
 	}
@@ -83,6 +91,8 @@ func (self *Lexer_t) not_quoted(last_rune rune, last_size int, last_state State_
 	case self.sep[last_rune] > 0:
 		self.last_trim.Reset()
 		return self.begin, STATE_SEPARATOR
+	case self.new_line[last_rune] > 0:
+		return self.begin, STATE_NEW_LINE
 	case self.trim[last_rune] > 0:
 		self.last_trim.WriteRune(last_rune)
 		return self.not_quoted, STATE_TRIM
@@ -92,7 +102,7 @@ func (self *Lexer_t) not_quoted(last_rune rune, last_size int, last_state State_
 			self.last_trim.Reset()
 		}
 		self.last_token.WriteRune(last_rune)
-		return self.not_quoted, STATE_STRING
+		return self.not_quoted, STATE_DATA
 	default:
 		return nil, STATE_EOF
 	}
@@ -112,7 +122,7 @@ func (self *Lexer_t) quoted(last_rune rune, last_size int, last_state State_t) (
 		return self.quoted, STATE_OPEN_QUOTE
 	case last_state != STATE_CLOSE_QUOTE && last_size > 0:
 		self.last_token.WriteRune(last_rune)
-		return self.quoted, STATE_STRING
+		return self.quoted, STATE_DATA
 	default:
 		return nil, STATE_ERROR_NO_QUOTE
 	}
@@ -122,6 +132,8 @@ func (self *Lexer_t) separator(last_rune rune, last_size int, last_state State_t
 	switch {
 	case self.sep[last_rune] > 0:
 		return self.begin, STATE_SEPARATOR
+	case self.new_line[last_rune] > 0:
+		return self.begin, STATE_NEW_LINE
 	case self.trim[last_rune] > 0:
 		return self.separator, STATE_TRIM
 	case last_size == 0:
@@ -137,7 +149,7 @@ func (self *Lexer_t) Next(in io.RuneReader) (token string, state State_t) {
 	for self.state != nil {
 		last_rune, last_size, _ = in.ReadRune()
 		self.state, state = self.state(last_rune, last_size, state)
-		if state == STATE_SEPARATOR || state >= STATE_EOF {
+		if state == STATE_SEPARATOR || state == STATE_NEW_LINE || state >= STATE_EOF {
 			token = self.last_token.String()
 			self.last_token.Reset()
 			return
@@ -148,7 +160,8 @@ func (self *Lexer_t) Next(in io.RuneReader) (token string, state State_t) {
 
 func Split(in string, sep ...rune) (res []string, err error) {
 	l := NewLexer(sep,
-		[]rune{'\v', '\f', '\r', '\n', '\t', ' '},
+		[]rune{'\n'},
+		[]rune{'\v', '\f', '\r', '\t', ' '},
 		[]Quote_t{
 			{'"', '"'},
 			{'\'', '\''},

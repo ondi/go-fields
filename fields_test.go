@@ -100,6 +100,10 @@ var data1 = []Data_t{
 		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "it's test", ""},
 	},
 	{
+		Input:  ", \n ',1,',\n' 2 ', , ' ,3 ,'\n , aaa'4' , \naaa'5'bbb , it's test   ,''",
+		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "it's test", ""},
+	},
+	{
 		Input:  ", , ',1,',,' 2 ', , ' ,3 ,', , aaa'4' , ,aaa'5'bbb , it's test   ,'",
 		Expect: []string{"", "", ",1,", "", " 2 ", "", " ,3 ,", "", "aaa'4'", "", "aaa'5'bbb", "it's test", ""},
 		Err:    true,
@@ -148,7 +152,8 @@ func Test002(t *testing.T) {
 
 func Test003(t *testing.T) {
 	l := NewLexer([]rune{','},
-		[]rune{'\v', '\f', '\r', '\n', '\t', ' '},
+		[]rune{'\n'},
+		[]rune{'\v', '\f', '\r', '\t', ' '},
 		[]Quote_t{
 			{'"', '"'},
 			{'\'', '\''},
